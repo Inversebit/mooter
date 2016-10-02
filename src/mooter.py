@@ -1,18 +1,42 @@
 from bs4 import BeautifulSoup
+from google.cloud import language
 import urllib.request
 
 
-url = "https://twitter.com/realDonaldTrump"
-
-
 def main():
+
+    person = get_person_to_spy()
+    url = "https://twitter.com/" + person
+
     with urllib.request.urlopen(url) as response:
         soup = BeautifulSoup(response.read(), 'html.parser')
+        print_name(soup)
+        print_tweets(soup)
 
-        tweets = soup.find_all("div", {"class": "js-tweet-text-container"})
-        for tweet in tweets:
-            tweet_text = parse_tweet(tweet)
-            print(tweet_text.replace("\n", ". "))
+
+def get_person_to_spy():
+    return input("On whom shall we spy? ")
+
+
+def print_name(soup):
+    name = soup.find("a", {"class": "ProfileHeaderCard-screennameLink"}).span.contents[0]
+    print("\n\nThis is what @" + name + " has to say today:\n")
+
+
+def print_tweets(soup):
+    tweets = soup.find_all("div", {"class": "js-tweet-text-container"})
+    for tweet in tweets:
+        tweet_text = parse_tweet(tweet)
+        print(tweet_text.replace("\n", ". "))
+
+        analyze_and_print_sentiment(tweet_text)
+
+
+def analyze_and_print_sentiment(tweet_text):
+    sentiment_client = language.Client()
+    doc = sentiment_client.document_from_text(tweet_text.replace("\n", ". "))
+    sentiment = doc.analyze_sentiment()
+    print("This tweet was " + ("happy" if sentiment.polarity > 0 else "mean"))
 
 
 def parse_tweet(tweet):
